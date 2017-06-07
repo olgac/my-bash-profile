@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true">
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!--== VARIABLES ============================================================================================-->
+
+    <springProperty scope="context" name="springApplicationName" source="spring.application.name"/>
+    <springProperty scope="context" name="springActiveProfiles" source="spring.profiles.active"/>
+
+    <property name="CONSOLE_LOG_PATTERN" value="%d %clr(%5p) --- %clr(${springApplicationName}){magenta} [%15.15t] %clr(%-40.40logger{39}){cyan} : %m%n%wEx"/>
+
+    <!--== APPENDERS ============================================================================================-->
+
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+
+    <appender name="REDIS" class="com.cwbase.logback.RedisAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <host>cache.sample.com</host>
+        <port>6379</port>
+        <key>logstash</key>
+        <source>${springActiveProfiles}</source>
+        <type>${springApplicationName}</type>
+        <additionalField>
+            <key>RequestID</key>
+            <value>@{X-REQUEST-ID}</value>
+        </additionalField>
+        <additionalField>
+            <key>Identity</key>
+            <value>@{X-IDENTITY}</value>
+        </additionalField>
+        <location>true</location>
+    </appender>
+
+    <appender name="SENTRY" class="com.getsentry.raven.logback.SentryAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <environment>${springActiveProfiles}</environment>
+        <tags>ApplicationName:${springApplicationName}</tags>
+        <dsn>https://idhsjfhkdshfkshdk@sentry.io/153880</dsn>
+        <extraTags>X-REQUEST-ID,X-IDENTITY</extraTags>
+    </appender>
+
+    <!--== LOGGERS ==============================================================================================-->
+
+    <root level="INFO">
+        <springProfile name="default, local">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
+        <springProfile name="sandbox, test, prod, dev">
+            <appender-ref ref="REDIS"/>
+            <appender-ref ref="SENTRY"/>
+        </springProfile>
+    </root>
+
+</configuration>
